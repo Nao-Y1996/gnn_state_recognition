@@ -20,13 +20,6 @@ import json
 
 class graph_utilitys():
     def __init__(self, fasttext_model):
-        # self.ID_2_OBJECT_NAME = {
-        #             0:"face", 1:"bottle", 2:"wine glass", 3:"cup", 4:"fork", 5:"knife", 6:"spoon", 7:"bowl",
-        #             8:"banana", 9:"apple", 10:"sandwich", 11:"orange", 12:"broccoli", 13:"carrot", 14:"hot dog", 15:"pizza", 16:"donut",
-        #             17:"cake", 18:"chair", 19:"sofa", 20:"pottedplant", 21:"bed", 22:"diningtable", 23:"toilet", 24:"tvmonitor", 25:"laptop",
-        #             26:"mouse", 27:"remote", 28:"keyboard", 29:"cell phone", 30:"microwave", 31:"oven", 32:"toaster", 33:"sink", 34:"refrigerator",
-        #             35:"book", 36:"clock", 37:"vase", 38:"scissors", 39:"teddy bear", 40:"hair drier", 41:"toothbrush"
-        #             }
         self.ID_2_OBJECT_NAME = {}
         conf_dir = os.path.dirname(__file__)+'/obj_conf/'
         with open(conf_dir+'ID_2_OBJECT_NAME.json') as f:

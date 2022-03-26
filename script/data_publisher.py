@@ -20,21 +20,6 @@ import traceback
 import json
 import shutil
 
-class JointStateSbscriber(object):
-
-    def __init__(self):
-        self.topick_name = "/hsrb/joint_states"
-        self.joint_positions = None
-        self._state_sub = rospy.Subscriber(self.topick_name, JointState, self._callback)
-        # Wait until connection
-        rospy.wait_for_message(self.topick_name, JointState, timeout=10.0)
-
-    def _callback(self, data):
-        self.joint_positions = data.position
-    
-    def get_head_position(self):
-        return  self.joint_positions[9], self.joint_positions[10]
-
 
 class TF_Publisher():
     def __init__(self, exe_type, tf_broadcaster):
@@ -96,20 +81,22 @@ class MediapipePoseSubscriber():
         self.face_pose_visibility = self.pose[0:11,2]
         return self.face_pose, self.face_pose_visibility
 
-# ======================物体名と物体IDの設定======================
+# ======================Configure object name and object ID======================
 conf_dir = os.path.dirname(__file__)+'/obj_conf/'
-MARKER_2_OBJECT ={}
 OBJECT_NAME_2_ID ={}
 ID_2_OBJECT_NAME = {}
 
-# YOLOで認識可能な物体をさらにに限定する
-obj_4_yolo = ["face", "tvmonitor", "laptop", "mouse", "keyboard", "book", "banana", "apple", "orange", "pizza","cup"]
+# Select an object to be used in this system from among the objects that can be recognized by YOLO.
+# The location information of the objects selected here is used to train the GNN.
+selected_obj_from_YOLO = ["tvmonitor", "laptop", "mouse", "keyboard", "book", "banana", "apple", "orange", "pizza","cup"]
+# It does not matter if you select all of them.
+# See https://github.com/leggedrobotics/darknet_ros for objects that can be recognized by YOLO.
 
-for i, name in enumerate(obj_4_yolo):
+detectable_obj_lsit = ["face"]+selected_obj_from_YOLO
+for i, name in enumerate(detectable_obj_lsit):
     OBJECT_NAME_2_ID[name]=i
     ID_2_OBJECT_NAME[i] = name
 
-# 設定をjsonファイルに書き込む
 with open(conf_dir+'ID_2_OBJECT_NAME.json', 'w') as f:
     json.dump(ID_2_OBJECT_NAME, f)
 with open(conf_dir+'OBJECT_NAME_2_ID.json', 'w') as f:
@@ -127,7 +114,7 @@ if __name__ == '__main__':
     rospy.sleep(3)
     user_dir = rospy.get_param("/user_dir")
 
-    # 保存用ディレクトリの設定
+    # Configuration of saving directory
     time_now = str(datetime.now()).split(' ')
     save_dir = user_dir  + '/'+time_now[0] + '-' +  time_now[1].split('.')[0].replace(':', '-')
     image_dir = save_dir+'/images/'
@@ -142,7 +129,7 @@ if __name__ == '__main__':
     except OSError:
         print('directory exist')
 
-    # スクリーンショット保存用ディレクトリの作成（10パターン分）
+    # Creation of directories for saving screenshots (for 10 patterns)
     for i in range(10):
         try:
             os.makedirs(image_dir+'pattern_'+str(i))
@@ -152,7 +139,7 @@ if __name__ == '__main__':
     user_state_file = user_dir+"/state.csv"
     is_known_user = os.path.isfile(user_state_file)
     if not is_known_user:
-        #状態管理用のファイル(csv)を新規作成
+        #Create new file (csv) for management of status labels
         with open(user_state_file, 'w') as f:
             writer = csv.writer(f)
             writer.writerow(['state'])
@@ -166,7 +153,7 @@ if __name__ == '__main__':
         pass
     
     
-    # データ送信のpublisher
+    # data publisher
     data_pub = rospy.Publisher("observed_data", Float32MultiArray, queue_size=1)
 
     # クラスのインスタンス化
@@ -183,14 +170,14 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
 
         robot_mode = rospy.get_param("/robot_mode")
-        detectable_yolo_obj_lsit = obj_4_yolo
 
         obj_moved = False
         face_exist = False
         obj_positions =[]
 
-        # ================================ グラフ用データの作成 ================================
-        # MediaPipePoseの骨格検出による顔位置の取得
+        # ================================ Creating Graph Data ================================
+
+        # Acquisition of face position by skeletal detection using MediaPipePose
         face_center, visibility = pose_sub.get_face_center()
         if (visibility>0.5).all():
             try:
@@ -200,8 +187,6 @@ if __name__ == '__main__':
                 face_exist = True
             except:
                 traceback.print_exc()
-
-        # 顔が検出できている時は物体ノードを作成する
         names = []
         if face_exist:
             # -------- object detection ---------
@@ -210,7 +195,7 @@ if __name__ == '__main__':
                 detect_obj_list = []
                 for obj in objects_info:
                     name = obj[0]
-                    if (name != 'person') and (name in detectable_yolo_obj_lsit):
+                    if (name != 'person') and (name in detectable_obj_lsit):
                         x, y = obj[1], obj[2]
                         obj_x, obj_y, obj_z = tf_pub.create_object_TF(name, x, y, create=True)
                         if obj_x is not None:
@@ -220,9 +205,7 @@ if __name__ == '__main__':
                             pass
         else:
             pass
-
         graph_data = np.array(obj_positions).reshape(1,-1)[0].tolist()
-
         # Add data_id at the beginning of graph_data
         data_id = int(float(time.time())*100)
         graph_data.insert(0, float(data_id))
@@ -243,7 +226,7 @@ if __name__ == '__main__':
             traceback.print_exc()
 
 
-        #------------ グラフデータを送る ------------#
+        #------------ publish graph data ------------#
         if None in graph_data:
             continue
         msg_data = Float32MultiArray(data=graph_data)
@@ -282,22 +265,14 @@ if __name__ == '__main__':
                 rospy.set_param("/robot_mode", "finish_collecting")
                 rospy.set_param("/cllecting_state_name", '')
 
-        # 認識モードのとき
         elif robot_mode == 'state_recognition':
             with open(recognition_file_path, 'a') as f:
                 writer = csv.writer(f)
                 writer.writerow(graph_data)
-                #　スクリーンショット
-                # image_save_path = rospy.get_param("/image_save_path")
-                # pag.screenshot(image_save_path+str(data_id)+'.jpg')
             print(names)
-            # essential_obj_list = None
 
-        # それ以外のモードのとき
         else:
             count_saved = 0
-            # count_ideal_saved = 0
-            # essential_obj_list = None
             
         spin_rate.sleep()
  
