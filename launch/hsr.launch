@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch> 
+    <!-- ====== HSR ===== -->
+    <rosparam>
+      exe_type: hsr
+    </rosparam>
+    <node pkg="rviz" type="rviz" name="overwite_rviz_conf" args="-d $(find gnn_state_recognition)/rviz_conf/hsr.rviz"/>
+    <include file="$(find darknet_ros)/launch/darknet_ros.launch">
+      <arg name="image" value="/hsrb/head_rgbd_sensor/rgb/image_raw"/>
+      <arg name="network_param_file"       default="$(find darknet_ros)/config/yolov3.yaml"/>
+    </include> 
+    <node pkg="gnn_state_recognition" name="mediapipePose" type="mediapipePose_publishser.py" output="screen"></node>
+    <!-- <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/>  -->
+</launch>

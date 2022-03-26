@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>    
+    <!-- ====== Xtion Camera ===== -->
+     <rosparam>
+      exe_type: xtion
+    </rosparam>
+    <include file="$(find openni2_launch)/launch/openni2.launch"></include>
+    <node pkg="rviz" type="rviz" name="overwite_rviz_conf" args="-d $(find gnn_state_recognition)/rviz_conf/xtion.rviz"/>
+    <include file="$(find darknet_ros)/launch/darknet_ros.launch">
+      <arg name="image" value="/camera/rgb/image_raw"/>
+      <arg name="network_param_file"       default="$(find darknet_ros)/config/yolov3.yaml"/> 
+      <!-- <arg name="network_param_file"       default="$(find darknet_ros)/config/yolov3-custom.yaml"/> -->
+    </include>
+    <node pkg="gnn_state_recognition" name="mediapipePose" type="mediapipePose_publishser.py" output="screen"></node>
+</launch>

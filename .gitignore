@@ -1,0 +1,5 @@
+__pycache__
+script/experiment_data/*/*/images/pattern_*
+script/w2v_model/*bin
+script/w2v_model/*gz
+serene-star-322806-748861ca74d7.json

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- ====== HSR simulator ===== -->
+   <rosparam>
+      exe_type: hsr_sim
+    </rosparam>
+    <include file="$(find hsrb_gazebo_launch)/launch/hsrb_megaweb2015_world.launch"></include>
+    <node pkg="rviz" type="rviz" name="overwite_rviz_conf" args="-d $(find gnn_state_recognition)/rviz_conf/hsr_sim.rviz"/>
+    <node name="rqt_gui" pkg="rqt_gui" type="rqt_gui"/> 
+    <include file="$(find darknet_ros)/launch/darknet_ros.launch">
+       <arg name="image" value="/hsrb/head_rgbd_sensor/rgb/image_raw"/>
+    </include>
+    <node pkg="gnn_state_recognition" name="mediapipePose" type="mediapipePose_publishser.py" output="screen"></node>
+
+</launch>
